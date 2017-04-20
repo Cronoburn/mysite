@@ -174,7 +174,7 @@
 }
 #af-wrapper .editor-row .cancel,
 #af-wrapper .editor-row .cancel-back {
-    color: white;
+    color: white !important;
     border: 1px solid #f91111;
     background-color: #ff5454;
     padding: 3px 6px;
@@ -347,7 +347,7 @@
 
 /* TITLE */
 #af-wrapper .title-element {
-    background-color: rgba(50,0,50,0.3);
+    background-color: #2d89cc;
     border-bottom: 2px solid #0073aa;
     color: #fff;
     padding: 3px 10px;
@@ -442,10 +442,10 @@
 /* CONTENT WRAPPERS*/
 #af-wrapper .content-element {
     margin-bottom: 15px;
-    background-color: rgba(57,41,71,0.4);
-    border-left: 1px solid rgb(57,41,71);
-    border-right: 1px solid rgb(57,41,71);
-    border-bottom: 1px solid rgb(57,41,71);
+    background-color: #fff;
+    border-left: 1px solid #e1e1e1;
+    border-right: 1px solid #e1e1e1;
+    border-bottom: 1px solid #e1e1e1;
 }
 #af-wrapper .content-element a:hover {
     text-decoration: underline;
@@ -527,9 +527,8 @@
     margin-bottom: 7px;
     padding: 2px 15px;
     color: #fff;
-    font-weight: bold;
     margin-right: -7px;
-    float: left;
+    display: block;
 }
 #af-wrapper .post-message {
     display: table-cell;
@@ -619,9 +618,9 @@
 }
 #af-wrapper #statistics #statistics-header {
     display: block;
-    background-color: rgb(57,41,71);
+    background-color: rgba(0, 0, 0, 0.4);
     color: #fff;
-    border-bottom: 2px solid rgb(57,41,71);
+    border-bottom: 2px solid rgba(0, 0, 0, 0.2);
     padding: 3px 10px;
 }
 #af-wrapper #statistics strong:before {

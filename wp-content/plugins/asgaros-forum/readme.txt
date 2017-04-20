@@ -4,7 +4,7 @@ Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_i
 Tags: forum, forums, discussion, multisite, community, bulletin, board, asgaros, support
 Requires at least: 4.7
 Tested up to: 4.7
-Stable tag: 1.4.4
+Stable tag: 1.4.5
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -84,6 +84,10 @@ You can add own themes for your forum in the `/wp-content/themes-asgarosforum` d
 * asgarosforum_statistics_custom_element
 * asgarosforum_statistics_custom_content_bottom
 * asgarosforum_admin_show_custom_category_data
+* asgarosforum_before_delete_post
+* asgarosforum_before_delete_topic
+* asgarosforum_after_delete_post
+* asgarosforum_after_delete_topic
 = Which filters are available =
 * asgarosforum_filter_login_message
 * asgarosforum_filter_post_username
@@ -115,6 +119,22 @@ You can add own themes for your forum in the `/wp-content/themes-asgarosforum` d
 6. Manage general options.
 
 == Changelog ==
+= 1.4.5 =
+* Added: Widget option to hide avatars
+* Added: Reply counter to recent forum topics widget
+* Added: Show author in notification mails
+* Added: asgarosforum_before_delete_post hook
+* Added: asgarosforum_before_delete_topic hook
+* Added: asgarosforum_after_delete_post hook
+* Added: asgarosforum_after_delete_topic hook
+* Fixed: Huge performance drops when the forum has a lot of posts/topics
+* Fixed: Prevent creation of hidden content
+* Fixed: Broken/missing links when the filename of uploads contains special characters
+* Fixed: Do not try to generate thumbnails for pdf uploads
+* Fixed: Dont show HTML-entities in the subject of notification mails
+* Changed: Indent subforums in forums-list when moving topics
+* Changed: Minor design changes
+* Performance improvements and code optimizations
 = 1.4.4 =
 * Added: Avatars to widgets
 * Added: asgarosforum_filter_widget_title_length filter

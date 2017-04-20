@@ -59,13 +59,14 @@ class AsgarosForumWidgets {
             $numberOfItems = ($instance['number']) ? absint($instance['number']) : 3;
 
             if ($widgetType === 'posts') {
-                $elements = self::$asgarosforum->db->get_results(self::$asgarosforum->db->prepare("SELECT p1.id, p1.date, p1.parent_id, p1.author_id, t.name, (SELECT COUNT(id) FROM ".self::$asgarosforum->tables->posts." WHERE parent_id = p1.parent_id) AS post_counter FROM ".self::$asgarosforum->tables->posts." AS p1 LEFT JOIN ".self::$asgarosforum->tables->posts." AS p2 ON (p1.parent_id = p2.parent_id AND p1.id < p2.id) LEFT JOIN ".self::$asgarosforum->tables->topics." AS t ON (t.id = p1.parent_id) LEFT JOIN ".self::$asgarosforum->tables->forums." AS f ON (f.id = t.parent_id) WHERE p2.id IS NULL {$where} ORDER BY p1.id DESC LIMIT %d;", $numberOfItems));
+                $elements = self::$asgarosforum->db->get_results(self::$asgarosforum->db->prepare("SELECT p.id, p.date, p.parent_id, p.author_id, t.name, (SELECT COUNT(id) FROM ".self::$asgarosforum->tables->posts." WHERE parent_id = p.parent_id) AS post_counter FROM ".self::$asgarosforum->tables->posts." AS p LEFT JOIN ".self::$asgarosforum->tables->topics." AS t ON (t.id = p.parent_id) LEFT JOIN ".self::$asgarosforum->tables->forums." AS f ON (f.id = t.parent_id) WHERE p.id IN (SELECT MAX(p_inner.id) FROM ".self::$asgarosforum->tables->posts." AS p_inner GROUP BY p_inner.parent_id) {$where} ORDER BY p.id DESC LIMIT %d;", $numberOfItems));
             } else if ($widgetType === 'topics') {
-                $elements = self::$asgarosforum->db->get_results(self::$asgarosforum->db->prepare("SELECT p1.id, p1.date, p1.parent_id, p1.author_id, t.name, (SELECT COUNT(id) FROM ".self::$asgarosforum->tables->posts." WHERE parent_id = p1.parent_id) AS post_counter FROM ".self::$asgarosforum->tables->posts." AS p1 LEFT JOIN ".self::$asgarosforum->tables->posts." AS p2 ON (p1.parent_id = p2.parent_id AND p1.id > p2.id) LEFT JOIN ".self::$asgarosforum->tables->topics." AS t ON (t.id = p1.parent_id) LEFT JOIN ".self::$asgarosforum->tables->forums." AS f ON (f.id = t.parent_id) WHERE p2.id IS NULL {$where} ORDER BY t.id DESC LIMIT %d;", $numberOfItems));
+                $elements = self::$asgarosforum->db->get_results(self::$asgarosforum->db->prepare("SELECT p.id, p.date, p.parent_id, p.author_id, t.name, (SELECT COUNT(id) FROM ".self::$asgarosforum->tables->posts." WHERE parent_id = p.parent_id) AS post_counter FROM ".self::$asgarosforum->tables->posts." AS p LEFT JOIN ".self::$asgarosforum->tables->topics." AS t ON (t.id = p.parent_id) LEFT JOIN ".self::$asgarosforum->tables->forums." AS f ON (f.id = t.parent_id) WHERE p.id IN (SELECT MAX(p_inner.id) FROM ".self::$asgarosforum->tables->posts." AS p_inner GROUP BY p_inner.parent_id) {$where} ORDER BY t.id DESC LIMIT %d;", $numberOfItems));
             }
 
             if ($elements) {
                 $avatars_available = get_option('show_avatars');
+                $show_avatar = isset($instance['show_avatar']) ? $instance['show_avatar'] : true;
                 $widgetTitleLength = apply_filters('asgarosforum_filter_widget_title_length', 33);
 
                 echo '<div class="asgarosforum-widget">';
@@ -74,14 +75,24 @@ class AsgarosForumWidgets {
                     // Calculate the page, where the last post is calculated.
                     $pageNumber = ceil($element->post_counter / self::$asgarosforum->options['posts_per_page']);
                     echo '<div class="widget-element">';
+
                     // Add avatars
-                    if ($avatars_available) {
+                    if ($avatars_available && $show_avatar) {
                         echo '<div class="widget-avatar">'.get_avatar($element->author_id, 30).'</div>';
                     }
+
                     echo '<div class="widget-content">';
+                        $count_answers_i18n_text = '';
+
+                        if ($widgetType === 'topics' && $element->post_counter > 1) {
+                            $answers = ($element->post_counter - 1);
+                            $count_answers_i18n = number_format_i18n($answers);
+                            $count_answers_i18n_text = ', '.sprintf(_n('%s Answer', '%s Answers', $answers, 'asgaros-forum'), $count_answers_i18n);
+                        }
+
                         echo '<span class="post-link"><a href="'.self::$asgarosforum->getLink('topic', $element->parent_id, array('part' => $pageNumber), '#postid-'.$element->id).'" title="'.esc_html(stripslashes($element->name)).'">'.esc_html(self::$asgarosforum->cut_string(stripslashes($element->name), $widgetTitleLength)).'</a></span>';
                         echo '<span class="post-author">'.__('by', 'asgaros-forum').'&nbsp;<b>'.self::$asgarosforum->getUsername($element->author_id).'</b></span>';
-                        echo '<span class="post-date">'.sprintf(__('%s ago', 'asgaros-forum'), human_time_diff(strtotime($element->date), current_time('timestamp'))).'</span>';
+                        echo '<span class="post-date">'.sprintf(__('%s ago', 'asgaros-forum'), human_time_diff(strtotime($element->date), current_time('timestamp'))).$count_answers_i18n_text.'</span>';
                     echo '</div>';
                     echo '</div>';
                 }
@@ -100,6 +111,7 @@ class AsgarosForumWidgets {
     public static function showForm($instance, $object, $defaultTitle) {
         $title = isset($instance['title']) ? esc_attr($instance['title']) : $defaultTitle;
         $number = isset($instance['number']) ? absint($instance['number']) : 3;
+        $show_avatar = isset($instance['show_avatar']) ? (bool)$instance['show_avatar'] : true;
 
 		echo '<p>';
 		echo '<label for="'.$object->get_field_id('title').'">'.__('Title:', 'asgaros-forum').'</label>';
@@ -110,12 +122,18 @@ class AsgarosForumWidgets {
 		echo '<label for="'.$object->get_field_id('number').'">'.__('Number of topics to show:', 'asgaros-forum').'</label>&nbsp;';
 		echo '<input class="tiny-text" id="'.$object->get_field_id('number').'" name="'.$object->get_field_name('number').'" type="number" step="1" min="1" value="'.$number.'" size="3">';
 		echo '</p>';
+
+        echo '<p>';
+        echo '<input class="checkbox" type="checkbox" '.checked($show_avatar, true, false).' id="'.$object->get_field_id('show_avatar').'" name="'.$object->get_field_name('show_avatar').'" />';
+		echo '<label for="'.$object->get_field_id('show_avatar').'">'.__('Show avatars?').'</label>';
+        echo '</p>';
     }
 
     public static function updateWidget($new_instance, $old_instance) {
         $instance = array();
 		$instance['title'] = sanitize_text_field($new_instance['title']);
 		$instance['number'] = (int)$new_instance['number'];
+        $instance['show_avatar'] = isset($new_instance['show_avatar']) ? (bool)$new_instance['show_avatar'] : false;
 		return $instance;
     }
 }

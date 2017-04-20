@@ -3,7 +3,7 @@
 if (!defined('ABSPATH')) exit;
 
 class AsgarosForum {
-    var $version = '1.4.4';
+    var $version = '1.4.5';
     var $executePlugin = false;
     var $db = null;
     var $tables = null;
@@ -24,6 +24,7 @@ class AsgarosForum {
     var $parent_forum = false;
     var $parent_forum_name = false;
     var $category_access_level = false;
+    var $parents_set = false;
     var $options = array();
     var $options_default = array(
         'location'                  => 0,
@@ -431,10 +432,26 @@ class AsgarosForum {
             $strOUT .= '<div class="content-element"><div class="notice">';
             $strOUT .= '<select name="newForumID">';
 
-            $frs = $this->get_forums();
+            $categories = $this->get_categories();
 
-            foreach ($frs as $f) {
-                $strOUT .= '<option value="'.$f->id.'"'.($f->id == $this->current_forum ? ' selected="selected"' : '').'>'.esc_html($f->name).'</option>';
+            if ($categories) {
+                foreach ($categories as $category) {
+                    $forums = $this->get_forums($category->term_id);
+
+                    if ($forums) {
+                        foreach ($forums as $forum) {
+                            $strOUT .= '<option value="'.$forum->id.'"'.($forum->id == $this->current_forum ? ' selected="selected"' : '').'>'.esc_html($forum->name).'</option>';
+
+                            if ($forum->count_subforums > 0) {
+                                $subforums = $this->get_forums($category->term_id, $forum->id);
+
+                                foreach ($subforums as $subforum) {
+                                    $strOUT .= '<option value="'.$subforum->id.'"'.($subforum->id == $this->current_forum ? ' selected="selected"' : '').'>--- '.esc_html($subforum->name).'</option>';
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             $strOUT .= '</select><br /><input type="submit" value="'.__('Move', 'asgaros-forum').'"></div></div></form>';
@@ -697,6 +714,8 @@ class AsgarosForum {
     function delete_topic($topicID, $admin_action = false) {
         if (AsgarosForumPermissions::isModerator('current')) {
             if ($topicID) {
+                do_action('asgarosforum_before_delete_topic', $topicID);
+
                 // Delete uploads
                 $posts = $this->db->get_col($this->db->prepare("SELECT id FROM {$this->tables->posts} WHERE parent_id = %d;", $topicID));
                 foreach ($posts as $post) {
@@ -706,6 +725,8 @@ class AsgarosForum {
                 $this->db->delete($this->tables->posts, array('parent_id' => $topicID), array('%d'));
                 $this->db->delete($this->tables->topics, array('id' => $topicID), array('%d'));
                 AsgarosForumNotifications::removeTopicSubscriptions($topicID);
+
+                do_action('asgarosforum_after_delete_topic', $topicID);
 
                 if (!$admin_action) {
                     wp_redirect(html_entity_decode($this->getLink('forum', $this->current_forum)));
@@ -729,8 +750,10 @@ class AsgarosForum {
         $post_id = (isset($_GET['post']) && is_numeric($_GET['post'])) ? absint($_GET['post']) : 0;
 
         if (AsgarosForumPermissions::isModerator('current') && $this->element_exists($post_id, $this->tables->posts)) {
+            do_action('asgarosforum_before_delete_post', $post_id);
             $this->db->delete($this->tables->posts, array('id' => $post_id), array('%d'));
             AsgarosForumUploads::deletePostFiles($post_id);
+            do_action('asgarosforum_after_delete_post', $post_id);
         }
     }
 
@@ -746,7 +769,7 @@ class AsgarosForum {
     // TODO: Optimize sql-query same as widget-query. (http://stackoverflow.com/a/28090544/4919483)
     function get_lastpost_in_forum($id) {
         if (empty($this->cache['get_lastpost_in_forum'][$id])) {
-            return $this->db->get_row($this->db->prepare("SELECT (SELECT COUNT(p_inner.id) FROM {$this->tables->posts} AS p_inner WHERE p_inner.parent_id = p.parent_id) AS number_of_posts, p.id, p.date, p.parent_id, p.author_id, t.name FROM {$this->tables->posts} AS p INNER JOIN {$this->tables->topics} AS t ON p.parent_id = t.id INNER JOIN {$this->tables->forums} AS f ON t.parent_id = f.id WHERE f.id = %d OR f.parent_forum = %d ORDER BY p.id DESC LIMIT 1;", $id, $id));
+            return $this->db->get_row($this->db->prepare("SELECT (SELECT COUNT(p_inner.id) FROM {$this->tables->posts} AS p_inner WHERE p_inner.parent_id = p.parent_id) AS number_of_posts, p.id, p.date, p.parent_id, p.author_id, t.name FROM {$this->tables->posts} AS p, {$this->tables->topics} AS t WHERE p.id = (SELECT p_id_query.id FROM {$this->tables->posts} AS p_id_query INNER JOIN {$this->tables->topics} AS t_id_query ON p_id_query.parent_id = t_id_query.id INNER JOIN {$this->tables->forums} AS f_id_query ON t_id_query.parent_id = f_id_query.id WHERE f_id_query.id = %d OR f_id_query.parent_forum = %d ORDER BY p_id_query.id DESC LIMIT 1) AND t.id = p.parent_id;", $id, $id));
         }
 
         return $this->cache['get_lastpost_in_forum'][$id];
@@ -849,6 +872,7 @@ class AsgarosForum {
                 $this->current_topic        = ($contentType === 'post' || $contentType === 'topic') ? $results->current_topic : false;
                 $this->current_topic_name   = ($contentType === 'post' || $contentType === 'topic') ? $results->current_topic_name : false;
                 $this->current_post         = ($contentType === 'post') ? $results->current_post : false;
+                $this->parents_set          = true;
                 return;
             }
         }
